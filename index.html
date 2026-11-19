@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab David TKJ - Simulasi CLI Ping & Packet Traceroute</title>
+  <style>
+    :root {
+      --bg-main: #0b1120;
+      --bg-panel: #111827;
+      --bg-panel-header: #1e293b;
+      --bg-terminal: #090d16;
+      --border-color: #334155;
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --accent-blue: #38bdf8;
+      --accent-cyan: #22d3ee;
+      --accent-green: #22c55e;
+      --accent-yellow: #facc15;
+      --accent-red: #ef4444;
+      --accent-purple: #a855f7;
+      --font-mono: 'Consolas', 'Courier New', monospace;
+      --font-sans: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Header Bar */
+    header {
+      background: linear-gradient(90deg, #0f172a 0%, #1e293b 100%);
+      border-bottom: 1px solid var(--border-color);
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-badge {
+      background: var(--accent-blue);
+      color: #090d16;
+      font-weight: 800;
+      font-size: 0.78rem;
+      padding: 4px 8px;
+      border-radius: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    .brand h1 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #f8fafc;
+    }
+
+    .brand span {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      display: block;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .toolbar label {
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+    }
+
+    .btn {
+      background: #1e293b;
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+      padding: 6px 11px;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 500;
+    }
+
+    .btn:hover {
+      background: #334155;
+      border-color: var(--accent-blue);
+    }
+
+    .btn-primary {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: var(--accent-blue);
+      color: var(--accent-blue);
+    }
+
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.15);
+      border-color: var(--accent-red);
+      color: #fca5a5;
+    }
+
+    /* Main 3-Column Grid */
+    .workspace {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1.15fr 1.45fr 1.15fr;
+      gap: 12px;
+      padding: 12px;
+      overflow: hidden;
+    }
+
+    .panel {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+    }
+
+    .panel-header {
+      background: var(--bg-panel-header);
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .panel-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    /* PANEL KIRI: CLI TERMINAL */
+    .terminal-body {
+      flex: 1;
+      background: var(--bg-terminal);
+      padding: 12px;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      line-height: 1.5;
+      overflow-y: auto;
+      color: #e2e8f0;
+    }
+
+    .term-line {
+      margin-bottom: 3px;
+      word-break: break-word;
+      white-space: pre-wrap;
+    }
+
+    .term-cmd { color: var(--accent-cyan); font-weight: bold; }
+    .term-success { color: var(--accent-green); }
+    .term-warn { color: var(--accent-yellow); }
+    .term-error { color: var(--accent-red); }
+    .term-info { color: var(--text-secondary); }
+
+    .quick-commands {
+      background: #0f172a;
+      border-top: 1px solid #1e293b;
+      padding: 7px 10px;
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .quick-commands span {
+      font-size: 0.72rem;
+      color: var(--text-secondary);
+    }
+
+    .chip {
+      background: #1e293b;
+      color: var(--accent-cyan);
+      border: 1px solid #334155;
+      border-radius: 4px;
+      padding: 2px 7px;
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      cursor: pointer;
+    }
+
+    .chip:hover {
+      background: #334155;
+    }
+
+    .terminal-input-bar {
+      background: #0f172a;
+      border-top: 1px solid var(--border-color);
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-mono);
+    }
+
+    .prompt-label {
+      color: var(--accent-green);
+      font-size: 0.82rem;
+      font-weight: bold;
+      white-space: nowrap;
+    }
+
+    #cliInput {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #ffffff;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+    }
+
+    /* PANEL TENGAH: TOPOLOGI 3 HOP */
+    .topology-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 14px;
+      background:
+        radial-gradient(circle at center, rgba(56, 189, 248, 0.06) 0%, transparent 70%),
+        linear-gradient(to right, rgba(51, 65, 85, 0.15) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(51, 65, 85, 0.15) 1px, transparent 1px);
+      background-size: 100% 100%, 24px 24px, 24px 24px;
+      position: relative;
+    }
+
+    .live-banner {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 0.8rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .live-status-text {
+      color: var(--accent-cyan);
+      font-weight: 600;
+    }
+
+    .svg-stage {
+      width: 100%;
+      flex: 1;
+      min-height: 280px;
+    }
+
+    .ip-reference-table {
+      background: rgba(15, 23, 42, 0.92);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 0.76rem;
+    }
+
+    .ip-reference-table h4 {
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+      font-size: 0.74rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .ip-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+    }
+
+    .ip-card {
+      background: #1e293b;
+      padding: 6px 8px;
+      border-radius: 5px;
+      border-left: 3px solid var(--accent-blue);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .ip-card.offline {
+      border-left-color: var(--accent-red);
+    }
+
+    .ip-card code {
+      font-family: var(--font-mono);
+      color: var(--accent-cyan);
+      font-weight: bold;
+    }
+
+    /* PANEL KANAN: STATUS JALUR & LOG ICMP */
+    .right-panel-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      padding: 12px;
+      gap: 12px;
+    }
+
+    .path-status-box {
+      background: #0f172a;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 10px;
+    }
+
+    .section-subtitle {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .hop-stepper {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .hop-step {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 7px 10px;
+      font-size: 0.78rem;
+      transition: all 0.25s;
+    }
+
+    .hop-step.active {
+      border-color: var(--accent-blue);
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
+    }
+
+    .hop-step.ok {
+      border-color: var(--accent-green);
+      background: rgba(34, 197, 94, 0.1);
+    }
+
+    .hop-step.warn {
+      border-color: var(--accent-yellow);
+      background: rgba(250, 204, 21, 0.1);
+    }
+
+    .hop-step.fail {
+      border-color: var(--accent-red);
+      background: rgba(239, 68, 68, 0.12);
+    }
+
+    .hop-info strong {
+      display: block;
+      color: #f8fafc;
+    }
+
+    .hop-info span {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--text-secondary);
+    }
+
+    .badge-status {
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      background: #334155;
+      color: #cbd5e1;
+    }
+
+    .badge-ok { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
+    .badge-warn { background: rgba(250, 204, 21, 0.2); color: #fde047; }
+    .badge-fail { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+    .badge-active { background: rgba(56, 189, 248, 0.25); color: #38bdf8; }
+
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .stat-item {
+      background: #1e293b;
+      padding: 6px;
+      border-radius: 5px;
+      text-align: center;
+    }
+
+    .stat-item span {
+      display: block;
+      font-size: 0.68rem;
+      color: var(--text-secondary);
+    }
+
+    .stat-item strong {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: var(--text-primary);
+    }
+
+    /* ICMP Log List */
+    .icmp-log-box {
+      flex: 1;
+      background: #0f172a;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .icmp-log-list {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding-right: 4px;
+    }
+
+    .log-entry {
+      background: #1e293b;
+      border-left: 3px solid var(--accent-blue);
+      border-radius: 5px;
+      padding: 7px 9px;
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+      animation: fadeIn 0.2s ease-in;
+    }
+
+    .log-entry.reply { border-left-color: var(--accent-green); }
+    .log-entry.ttl-exp { border-left-color: var(--accent-yellow); }
+    .log-entry.timeout { border-left-color: var(--accent-red); }
+
+    .log-top {
+      display: flex;
+      justify-content: space-between;
+      font-weight: bold;
+      margin-bottom: 3px;
+    }
+
+    .log-meta {
+      color: var(--text-secondary);
+      font-size: 0.71rem;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Responsive */
+    @media (max-width: 1100px) {
+      body { height: auto; overflow-y: auto; }
+      .workspace { grid-template-columns: 1fr; overflow: visible; }
+      .terminal-body { min-height: 260px; max-height: 320px; }
+      .icmp-log-list { min-height: 220px; max-height: 300px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOP HEADER -->
+  <header>
+    <div class="brand">
+      <div class="brand-badge">LAB DAVID TKJ</div>
+      <div>
+        <h1>Modul Simulasi CLI Ping &amp; Packet Traceroute</h1>
+        <span>Teknik Komputer dan Jaringan • Analisis Protokol ICMP &amp; Topologi 3-Hop</span>
+      </div>
+    </div>
+    <div class="toolbar">
+      <label>Uji Cepat:</label>
+      <button class="btn btn-primary" onclick="runPreset('ping 10.10.10.2')">Ping Server (Normal)</button>
+      <button class="btn btn-primary" onclick="runPreset('tracert 10.10.10.2')">Tracert 3-Hop</button>
+      <button class="btn" onclick="runPreset('ping 10.10.10.99')">Uji Timeout (RTO)</button>
+      <button class="btn btn-danger" onclick="resetLab()">Reset Lab</button>
+    </div>
+  </header>
+
+  <!-- MAIN 3-COLUMN WORKSPACE -->
+  <main class="workspace">
+
+    <!-- PANEL KIRI: TERMINAL CLI -->
+    <section class="panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span class="dot" style="background: var(--accent-green);"></span>
+          Terminal CLI (PC Client)
+        </div>
+        <span style="font-size: 0.72rem; color: var(--text-secondary);">OS: TKJ-NetShell v2.6</span>
+      </div>
+
+      <div id="terminalOutput" class="terminal-body"></div>
+
+      <div class="quick-commands">
+        <span>Perintah:</span>
+        <button class="chip" onclick="fillCommand('ping 10.10.10.2')">ping 10.10.10.2</button>
+        <button class="chip" onclick="fillCommand('tracert 10.10.10.2')">tracert 10.10.10.2</button>
+        <button class="chip" onclick="fillCommand('ping 192.168.1.1')">ping 192.168.1.1</button>
+        <button class="chip" onclick="fillCommand('tracert 10.10.10.99')">tracert 10.10.10.99</button>
+        <button class="chip" onclick="fillCommand('ipconfig')">ipconfig</button>
+        <button class="chip" onclick="fillCommand('clear')">clear</button>
+      </div>
+
+      <form id="cliForm" class="terminal-input-bar" autocomplete="off">
+        <span class="prompt-label">C:\PC-TKJ&gt;</span>
+        <input type="text" id="cliInput" placeholder="Ketik perintah (misal: ping 10.10.10.2 atau help)..." autofocus />
+        <button type="submit" class="btn btn-primary" style="padding: 4px 10px;">Kirim</button>
+      </form>
+    </section>
+
+    <!-- PANEL TENGAH: ANIMASI TOPOLOGI 3 HOP -->
+    <section class="panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span class="dot" style="background: var(--accent-blue);"></span>
+          Topologi Jaringan (Simulasi 3 Hop)
+        </div>
+        <span id="simModeBadge" class="badge-status">IDLE</span>
+      </div>
+
+      <div class="topology-container">
+        <div class="live-banner">
+          <span>Status Paket:</span>
+          <span id="liveBannerText" class="live-status-text">Menunggu perintah CLI dari PC Client...</span>
+        </div>
+
+        <!-- SVG TOPOLOGY DIAGRAM -->
+        <svg id="topologySvg" class="svg-stage" viewBox="0 0 640 310" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <filter id="glowBlue" x="-30%" y="-30%" width="160%" height="160%">
+              <feGaussianBlur stdDeviation="4" result="blur" />
+              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
+          </defs>
+
+          <!-- Background Labels for Hops -->
+          <text x="145" y="95" fill="#64748b" font-size="11" text-anchor="middle" font-family="monospace">HOP 1 (LAN)</text>
+          <text x="320" y="95" fill="#64748b" font-size="11" text-anchor="middle" font-family="monospace">HOP 2 (GATEWAY)</text>
+          <text x="495" y="95" fill="#64748b" font-size="11" text-anchor="middle" font-family="monospace">HOP 3 (WAN/SERVER)</text>
+
+          <!-- Connection Links -->
+          <line id="link-1" x1="80" y1="150" x2="210" y2="150" stroke="#334155" stroke-width="4" stroke-linecap="round" />
+          <line id="link-2" x1="250" y1="150" x2="390" y2="150" stroke="#334155" stroke-width="4" stroke-linecap="round" />
+          <line id="link-3" x1="430" y1="150" x2="560" y2="150" stroke="#334155" stroke-width="4" stroke-linecap="round" />
+
+          <!-- NODE 0: PC CLIENT -->
+          <g id="node-0" transform="translate(60, 150)">
+            <circle r="32" fill="#0f172a" stroke="#38bdf8" stroke-width="2.5" />
+            <!-- Monitor Icon -->
+            <rect x="-14" y="-13" width="28" height="18" rx="2" fill="none" stroke="#38bdf8" stroke-width="2" />
+            <line x1="-6" y1="9" x2="6" y2="9" stroke="#38bdf8" stroke-width="2" />
+            <line x1="0" y1="5" x2="0" y2="9" stroke="#38bdf8" stroke-width="2" />
+            <text y="50" fill="#f8fafc" font-size="12" font-weight="bold" text-anchor="middle">PC Client</text>
+            <text y="65" fill="#38bdf8" font-size="10.5" font-family="monospace" text-anchor="middle">192.168.1.10</text>
+          </g>
+
+          <!-- NODE 1: SWITCH (HOP 1) -->
+          <g id="node-1" transform="translate(230, 150)">
+            <circle id="ring-1" r="32" fill="#0f172a" stroke="#64748b" stroke-width="2.5" />
+            <!-- Switch Icon -->
+            <rect x="-16" y="-10" width="32" height="20" rx="3" fill="none" stroke="#cbd5e1" stroke-width="2" />
+            <line x1="-10" y1="-3" x2="10" y2="-3" stroke="#38bdf8" stroke-width="2" />
+            <line x1="-10" y1="4" x2="10" y2="4" stroke="#22c55e" stroke-width="2" />
+            <text y="50" fill="#f8fafc" font-size="12" font-weight="bold" text-anchor="middle">Switch</text>
+            <text y="65" fill="#94a3b8" font-size="10.5" font-family="monospace" text-anchor="middle">192.168.1.2</text>
+          </g>
+
+          <!-- NODE 2: ROUTER (HOP 2) -->
+          <g id="node-2" transform="translate(410, 150)">
+            <circle id="ring-2" r="32" fill="#0f172a" stroke="#64748b" stroke-width="2.5" />
+            <!-- Router Icon -->
+            <circle r="15" fill="none" stroke="#cbd5e1" stroke-width="2" />
+            <path d="M-8,0 L8,0 M0,-8 L0,8" stroke="#facc15" stroke-width="2" />
+            <text y="50" fill="#f8fafc" font-size="12" font-weight="bold" text-anchor="middle">Router</text>
+            <text y="65" fill="#94a3b8" font-size="10.5" font-family="monospace" text-anchor="middle">192.168.1.1</text>
+          </g>
+
+          <!-- NODE 3: SERVER (HOP 3) -->
+          <g id="node-3" transform="translate(580, 150)">
+            <circle id="ring-3" r="32" fill="#0f172a" stroke="#64748b" stroke-width="2.5" />
+            <!-- Server Rack Icon -->
+            <rect x="-12" y="-15" width="24" height="30" rx="2" fill="none" stroke="#cbd5e1" stroke-width="2" />
+            <line x1="-8" y1="-7" x2="8" y2="-7" stroke="#22c55e" stroke-width="2" />
+            <line x1="-8" y1="0" x2="8" y2="0" stroke="#22c55e" stroke-width="2" />
+            <line x1="-8" y1="7" x2="8" y2="7" stroke="#38bdf8" stroke-width="2" />
+            <text y="50" fill="#f8fafc" font-size="12" font-weight="bold" text-anchor="middle">Server</text>
+            <text y="65" fill="#94a3b8" font-size="10.5" font-family="monospace" text-anchor="middle">10.10.10.2</text>
+          </g>
+
+          <!-- ANIMATED PACKET ELEMENT -->
+          <g id="packetGroup" visibility="hidden" transform="translate(60, 150)">
+            <circle id="packetDot" r="9" fill="#38bdf8" filter="url(#glowBlue)" />
+            <rect id="packetLabelBg" x="-48" y="-34" width="96" height="18" rx="4" fill="#0f172a" stroke="#38bdf8" stroke-width="1" />
+            <text id="packetLabel" x="0" y="-22" fill="#ffffff" font-size="9.5" font-family="monospace" font-weight="bold" text-anchor="middle">ICMP REQ</text>
+          </g>
+
+          <!-- DROP / TIMEOUT INDICATOR -->
+          <g id="dropMarker" visibility="hidden" transform="translate(580, 150)">
+            <circle r="20" fill="rgba(239, 68, 68, 0.25)" stroke="#ef4444" stroke-width="2" />
+            <text y="5" fill="#ef4444" font-size="18" font-weight="bold" text-anchor="middle">✕</text>
+          </g>
+        </svg>
+
+        <!-- DAFTAR IP LAB -->
+        <div class="ip-reference-table">
+          <h4>Daftar Alamat IP Perangkat Lab</h4>
+          <div class="ip-grid">
+            <div class="ip-card">
+              <span>PC Client (Anda)</span>
+              <code>192.168.1.10</code>
+            </div>
+            <div class="ip-card">
+              <span>Hop 1: Switch</span>
